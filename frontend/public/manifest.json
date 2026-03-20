@@ -1,0 +1,35 @@
+{
+  "name": "WBS Transcript & Recommendation Tracker",
+  "short_name": "WBS Tracker",
+  "description": "Wolmer's Boys' School Transcript and Recommendation Letter Request System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fafaf9",
+  "theme_color": "#800000",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://customer-assets.emergentagent.com/job_13afcd2c-9b31-4868-9eb9-1450f0dbe963/artifacts/iuukr0xo_Wolmer%27s_Schools.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://customer-assets.emergentagent.com/job_13afcd2c-9b31-4868-9eb9-1450f0dbe963/artifacts/iuukr0xo_Wolmer%27s_Schools.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "utilities"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "New Request",
+      "short_name": "New Request",
+      "description": "Create a new transcript or recommendation request",
+      "url": "/student/select-service",
+      "icons": []
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family: 'JetBrains Mono', source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+}
+
+h1, h2, h3, h4, h5, h6, .font-heading {
+    font-family: 'Playfair Display', serif;
+}
+
+@layer base {
+    :root {
+        --background: 0 0% 100%;
+        --foreground: 24 10% 10%;
+        --card: 0 0% 100%;
+        --card-foreground: 24 10% 10%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 24 10% 10%;
+        --primary: 0 100% 25%;
+        --primary-foreground: 0 0% 100%;
+        --secondary: 51 100% 50%;
+        --secondary-foreground: 40 100% 11%;
+        --muted: 30 6% 96%;
+        --muted-foreground: 24 5% 45%;
+        --accent: 30 6% 96%;
+        --accent-foreground: 24 10% 10%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 24 6% 90%;
+        --input: 24 6% 90%;
+        --ring: 0 100% 25%;
+        --chart-1: 0 100% 25%;
+        --chart-2: 51 100% 50%;
+        --chart-3: 24 6% 45%;
+        --chart-4: 120 40% 40%;
+        --chart-5: 200 60% 50%;
+        --radius: 0.375rem;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply bg-[#800000] text-white hover:bg-[#600000] shadow-sm font-medium px-6 py-2 rounded-md transition-colors duration-200;
+    }
+    
+    .btn-secondary {
+        @apply bg-[#FFD700] text-[#3a3000] hover:bg-[#e6c200] shadow-sm font-medium px-6 py-2 rounded-md transition-colors duration-200;
+    }
+    
+    .btn-outline {
+        @apply border-2 border-[#800000] text-[#800000] hover:bg-[#800000] hover:text-white font-medium px-6 py-2 rounded-md transition-colors duration-200;
+    }
+    
+    .card-base {
+        @apply bg-white border border-stone-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200;
+    }
+    
+    .input-base {
+        @apply flex h-10 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-stone-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#800000] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    }
+    
+    .badge-pending {
+        @apply bg-yellow-100 text-yellow-800 border border-yellow-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    }
+    
+    .badge-in-progress {
+        @apply bg-blue-100 text-blue-800 border border-blue-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    }
+    
+    .badge-processing {
+        @apply bg-purple-100 text-purple-800 border border-purple-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    }
+    
+    .badge-ready {
+        @apply bg-cyan-100 text-cyan-800 border border-cyan-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    }
+    
+    .badge-completed {
+        @apply bg-green-100 text-green-800 border border-green-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    }
+    
+    .badge-rejected {
+        @apply bg-red-100 text-red-800 border border-red-200 px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    }
+}
+
+@layer utilities {
+    .animate-fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    
+    .animate-slide-up {
+        animation: slideUp 0.5s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+        from { 
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to { 
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    /* Mobile-first responsive utilities */
+    .mobile-container {
+        @apply px-4 sm:px-6 lg:px-8;
+    }
+    
+    .mobile-stack {
+        @apply flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4;
+    }
+    
+    .mobile-grid {
+        @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+    }
+    
+    .mobile-text-center {
+        @apply text-center sm:text-left;
+    }
+    
+    .mobile-hide {
+        @apply hidden sm:block;
+    }
+    
+    .mobile-show {
+        @apply block sm:hidden;
+    }
+    
+    /* Touch-friendly targets */
+    .touch-target {
+        @apply min-h-[44px] min-w-[44px];
+    }
+    
+    /* Safe area insets for notched devices */
+    .safe-area-inset {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+}
+
+/* Mobile-specific overrides */
+@media (max-width: 640px) {
+    .card-base {
+        @apply rounded-none sm:rounded-md border-x-0 sm:border-x;
+    }
+    
+    /* Larger touch targets on mobile */
+    button, a, [role="button"] {
+        min-height: 44px;
+    }
+    
+    /* Better form inputs on mobile */
+    input, select, textarea {
+        font-size: 16px !important; /* Prevents zoom on iOS */
+    }
+    
+    /* Full-width buttons on mobile */
+    .btn-primary, .btn-secondary, .btn-outline {
+        @apply w-full;
+    }
+}
+
+@layer base {
+    [data-debug-wrapper="true"] {
+        display: contents !important;
+    }
+
+    [data-debug-wrapper="true"] > * {
+        margin-left: inherit;
+        margin-right: inherit;
+        margin-top: inherit;
+        margin-bottom: inherit;
+        padding-left: inherit;
+        padding-right: inherit;
+        padding-top: inherit;
+        padding-bottom: inherit;
+        column-gap: inherit;
+        row-gap: inherit;
+        gap: inherit;
+        border-left-width: inherit;
+        border-right-width: inherit;
+        border-top-width: inherit;
+        border-bottom-width: inherit;
+        border-left-style: inherit;
+        border-right-style: inherit;
+        border-top-style: inherit;
+        border-bottom-style: inherit;
+        border-left-color: inherit;
+        border-right-color: inherit;
+        border-top-color: inherit;
+        border-bottom-color: inherit;
+    }
+}
