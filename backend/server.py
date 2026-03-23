@@ -2448,104 +2448,90 @@ def generate_transcript_xlsx(requests):
     )
 
 def generate_transcript_pdf(requests):
-    """Generate PDF file for transcript requests"""
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=30, bottomMargin=30)
+    """Generate multi-page PDF file with full details for each transcript request"""
+    if not requests:
+        # Return empty report if no requests
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        elements = [Paragraph("No transcript requests found", getSampleStyleSheet()['Normal'])]
+        doc.build(elements)
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=transcript_requests_detailed_{datetime.now().strftime('%Y%m%d')}.pdf"}
+        )
     
-    elements = []
-    styles = getSampleStyleSheet()
-    
-    # Title
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], alignment=1, spaceAfter=20)
-    elements.append(Paragraph("Transcript Requests Report", title_style))
-    elements.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
-    elements.append(Spacer(1, 20))
-    
-    # Table data
-    data = [["ID", "Student", "Status", "Academic Years", "Collection", "Institution", "Needed By", "Staff"]]
-    
+    # Generate detailed report for each request using the individual export logic
+    pdf_buffers = []
     for req in requests:
-        data.append([
-            req.get("id", "")[:8],
-            req.get("student_name", ""),
-            req.get("status", ""),
-            format_years_for_export(req.get("academic_years", req.get("academic_year", "")))[:20],
-            req.get("collection_method", ""),
-            (req.get("institution_name", "") or "")[:20],
-            format_date_for_export(req.get("needed_by_date", ""))[:10],
-            (req.get("assigned_staff_name", "") or "Unassigned")[:15]
-        ])
+        req_normalized = normalize_transcript_data(req)
+        req_buffer = build_transcript_pdf(req_normalized)
+        pdf_buffers.append(req_buffer)
     
-    # Create table
-    table = Table(data, repeatRows=1)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.5, 0, 0)),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 10),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 8),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
+    # Merge all PDFs into one
+    from PyPDF2 import PdfMerger
+    merger = PdfMerger()
     
-    elements.append(table)
-    doc.build(elements)
-    buffer.seek(0)
+    for pdf_buffer in pdf_buffers:
+        pdf_buffer.seek(0)
+        merger.append(pdf_buffer)
+    
+    output_buffer = io.BytesIO()
+    merger.write(output_buffer)
+    merger.close()
+    output_buffer.seek(0)
     
     return StreamingResponse(
-        buffer,
+        output_buffer,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=transcript_requests_{datetime.now().strftime('%Y%m%d')}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=transcript_requests_detailed_{datetime.now().strftime('%Y%m%d')}.pdf"}
     )
 
 def generate_transcript_docx(requests):
-    """Generate DOCX file for transcript requests"""
-    doc = Document()
+    """Generate multi-page DOCX file with full details for each transcript request"""
+    if not requests:
+        # Return empty report if no requests
+        doc = Document()
+        doc.add_heading('No transcript requests found', 0)
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f"attachment; filename=transcript_requests_detailed_{datetime.now().strftime('%Y%m%d')}.docx"}
+        )
     
-    # Title
-    title = doc.add_heading('Transcript Requests Report', 0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # Create main document
+    main_doc = Document()
     
-    doc.add_paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    doc.add_paragraph(f"Total Requests: {len(requests)}")
-    doc.add_paragraph()
+    # Add each request as a separate section with page break
+    for idx, req in enumerate(requests):
+        req_normalized = normalize_transcript_data(req)
+        
+        # Build individual document
+        temp_buffer = build_transcript_docx(req_normalized)
+        temp_buffer.seek(0)
+        temp_doc = Document(temp_buffer)
+        
+        # Copy content from temp document to main document
+        for element in temp_doc.element.body:
+            main_doc.element.body.append(element)
+        
+        # Add page break between requests (except for the last one)
+        if idx < len(requests) - 1:
+            main_doc.add_page_break()
     
-    # Create table
-    table = doc.add_table(rows=1, cols=7)
-    table.style = 'Table Grid'
-    
-    # Headers
-    headers = ["Student", "Status", "Academic Years", "Collection", "Institution", "Needed By", "Staff"]
-    hdr_cells = table.rows[0].cells
-    for i, header in enumerate(headers):
-        hdr_cells[i].text = header
-        hdr_cells[i].paragraphs[0].runs[0].bold = True
-    
-    # Data rows
-    for req in requests:
-        row_cells = table.add_row().cells
-        row_cells[0].text = req.get("student_name", "")
-        row_cells[1].text = req.get("status", "")
-        row_cells[2].text = format_years_for_export(req.get("academic_years", req.get("academic_year", "")))
-        row_cells[3].text = req.get("collection_method", "")
-        row_cells[4].text = req.get("institution_name", "") or ""
-        row_cells[5].text = format_date_for_export(req.get("needed_by_date", ""))[:10]
-        row_cells[6].text = req.get("assigned_staff_name", "") or "Unassigned"
-    
-    # Save to buffer
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
+    # Save final document
+    output_buffer = io.BytesIO()
+    main_doc.save(output_buffer)
+    output_buffer.seek(0)
     
     return StreamingResponse(
-        buffer,
+        output_buffer,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename=transcript_requests_{datetime.now().strftime('%Y%m%d')}.docx"}
+        headers={"Content-Disposition": f"attachment; filename=transcript_requests_detailed_{datetime.now().strftime('%Y%m%d')}.docx"}
     )
 
 def generate_recommendation_xlsx(requests):
@@ -2600,106 +2586,90 @@ def generate_recommendation_xlsx(requests):
     )
 
 def generate_recommendation_pdf(requests):
-    """Generate PDF file for recommendation requests"""
-    buffer = io.BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=landscape(letter), topMargin=30, bottomMargin=30)
+    """Generate multi-page PDF file with full details for each recommendation request"""
+    if not requests:
+        # Return empty report if no requests
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        elements = [Paragraph("No recommendation requests found", getSampleStyleSheet()['Normal'])]
+        doc.build(elements)
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=recommendation_requests_detailed_{datetime.now().strftime('%Y%m%d')}.pdf"}
+        )
     
-    elements = []
-    styles = getSampleStyleSheet()
-    
-    # Title
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], alignment=1, spaceAfter=20)
-    elements.append(Paragraph("Recommendation Letter Requests Report", title_style))
-    elements.append(Paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", styles['Normal']))
-    elements.append(Spacer(1, 20))
-    
-    # Table data
-    data = [["ID", "Student", "Status", "Years", "Institution", "Program", "Collection", "Needed By", "Staff"]]
-    
+    # Generate detailed report for each request using the individual export logic
+    pdf_buffers = []
     for req in requests:
-        data.append([
-            req.get("id", "")[:8],
-            req.get("student_name", ""),
-            req.get("status", ""),
-            format_years_for_export(req.get("years_attended", req.get("years_attended_str", "")))[:15],
-            (req.get("institution_name", "") or "")[:18],
-            (req.get("program_name", "") or "")[:18],
-            req.get("collection_method", ""),
-            format_date_for_export(req.get("needed_by_date", ""))[:10],
-            (req.get("assigned_staff_name", "") or "Unassigned")[:12]
-        ])
+        req_normalized = normalize_recommendation_data(req)
+        req_buffer = build_recommendation_pdf(req_normalized)
+        pdf_buffers.append(req_buffer)
     
-    # Create table
-    table = Table(data, repeatRows=1)
-    table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.Color(0.85, 0.65, 0.13)),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 9),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.lightyellow),
-        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 7),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-    ]))
+    # Merge all PDFs into one
+    from PyPDF2 import PdfMerger
+    merger = PdfMerger()
     
-    elements.append(table)
-    doc.build(elements)
-    buffer.seek(0)
+    for pdf_buffer in pdf_buffers:
+        pdf_buffer.seek(0)
+        merger.append(pdf_buffer)
+    
+    output_buffer = io.BytesIO()
+    merger.write(output_buffer)
+    merger.close()
+    output_buffer.seek(0)
     
     return StreamingResponse(
-        buffer,
+        output_buffer,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=recommendation_requests_{datetime.now().strftime('%Y%m%d')}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=recommendation_requests_detailed_{datetime.now().strftime('%Y%m%d')}.pdf"}
     )
 
 def generate_recommendation_docx(requests):
-    """Generate DOCX file for recommendation requests"""
-    doc = Document()
+    """Generate multi-page DOCX file with full details for each recommendation request"""
+    if not requests:
+        # Return empty report if no requests
+        doc = Document()
+        doc.add_heading('No recommendation requests found', 0)
+        buffer = io.BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+        return StreamingResponse(
+            buffer,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f"attachment; filename=recommendation_requests_detailed_{datetime.now().strftime('%Y%m%d')}.docx"}
+        )
     
-    # Title
-    title = doc.add_heading('Recommendation Letter Requests Report', 0)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    # Create main document
+    main_doc = Document()
     
-    doc.add_paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    doc.add_paragraph(f"Total Requests: {len(requests)}")
-    doc.add_paragraph()
+    # Add each request as a separate section with page break
+    for idx, req in enumerate(requests):
+        req_normalized = normalize_recommendation_data(req)
+        
+        # Build individual document
+        temp_buffer = build_recommendation_docx(req_normalized)
+        temp_buffer.seek(0)
+        temp_doc = Document(temp_buffer)
+        
+        # Copy content from temp document to main document
+        for element in temp_doc.element.body:
+            main_doc.element.body.append(element)
+        
+        # Add page break between requests (except for the last one)
+        if idx < len(requests) - 1:
+            main_doc.add_page_break()
     
-    # Create table
-    table = doc.add_table(rows=1, cols=8)
-    table.style = 'Table Grid'
-    
-    # Headers
-    headers = ["Student", "Status", "Years", "Form Class", "Institution", "Program", "Needed By", "Staff"]
-    hdr_cells = table.rows[0].cells
-    for i, header in enumerate(headers):
-        hdr_cells[i].text = header
-        hdr_cells[i].paragraphs[0].runs[0].bold = True
-    
-    # Data rows
-    for req in requests:
-        row_cells = table.add_row().cells
-        row_cells[0].text = req.get("student_name", "")
-        row_cells[1].text = req.get("status", "")
-        row_cells[2].text = format_years_for_export(req.get("years_attended", req.get("years_attended_str", "")))
-        row_cells[3].text = req.get("last_form_class", "")
-        row_cells[4].text = req.get("institution_name", "") or ""
-        row_cells[5].text = req.get("program_name", "") or ""
-        row_cells[6].text = format_date_for_export(req.get("needed_by_date", ""))[:10]
-        row_cells[7].text = req.get("assigned_staff_name", "") or "Unassigned"
-    
-    # Save to buffer
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    buffer.seek(0)
+    # Save final document
+    output_buffer = io.BytesIO()
+    main_doc.save(output_buffer)
+    output_buffer.seek(0)
     
     return StreamingResponse(
-        buffer,
+        output_buffer,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        headers={"Content-Disposition": f"attachment; filename=recommendation_requests_{datetime.now().strftime('%Y%m%d')}.docx"}
+        headers={"Content-Disposition": f"attachment; filename=recommendation_requests_detailed_{datetime.now().strftime('%Y%m%d')}.docx"}
     )
 
 # ==================== ADMIN DATA MANAGEMENT ====================

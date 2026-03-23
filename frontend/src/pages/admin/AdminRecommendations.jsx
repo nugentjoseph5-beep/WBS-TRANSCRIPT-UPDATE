@@ -346,10 +346,7 @@ export default function AdminRecommendations() {
               
               {/* Export Buttons */}
               <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-                <span className="text-sm text-stone-500 mr-2">Export:</span>
-                <Button size="sm" variant="outline" onClick={() => handleExport('xlsx')} disabled={exportLoading}>
-                  <FileSpreadsheet className="h-4 w-4 mr-1" /> XLSX
-                </Button>
+                <span className="text-sm text-stone-500 mr-2">Export Detailed Reports:</span>
                 <Button size="sm" variant="outline" onClick={() => handleExport('pdf')} disabled={exportLoading}>
                   <FileType className="h-4 w-4 mr-1" /> PDF
                 </Button>

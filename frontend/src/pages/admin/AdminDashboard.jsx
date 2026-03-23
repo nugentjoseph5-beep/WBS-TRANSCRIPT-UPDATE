@@ -406,41 +406,44 @@ export default function AdminDashboard() {
                 <p className="text-stone-500 text-sm hidden md:block">Overview of all requests</p>
               </div>
             </div>
-            <div className="flex items-center gap-2 md:gap-4">
-              {/* Export Buttons */}
-              <Button 
-                onClick={handleExportPDF} 
-                disabled={exportLoading || loading}
-                size="sm"
-                className="bg-[#800000] hover:bg-[#600000] hidden md:flex"
-              >
-                {exportLoading ? (
-                  <Clock className="h-4 w-4 md:mr-2 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4 md:mr-2" />
-                )}
-                <span className="hidden md:inline">Export PDF</span>
-              </Button>
-              <Button 
-                onClick={handleExportCSV}
-                disabled={loading}
-                variant="outline"
-                size="sm"
-                className="hidden md:flex"
-              >
-                <FileSpreadsheet className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline">Export CSV</span>
-              </Button>
+            <div className="flex flex-col items-end gap-2">
+              <p className="text-xs text-stone-500 font-medium">Export Dashboard Analytical Charts</p>
+              <div className="flex items-center gap-2 md:gap-4">
+                {/* Export Buttons */}
+                <Button 
+                  onClick={handleExportPDF} 
+                  disabled={exportLoading || loading}
+                  size="sm"
+                  className="bg-[#800000] hover:bg-[#600000] hidden md:flex"
+                >
+                  {exportLoading ? (
+                    <Clock className="h-4 w-4 md:mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 md:mr-2" />
+                  )}
+                  <span className="hidden md:inline">Export PDF</span>
+                </Button>
+                <Button 
+                  onClick={handleExportCSV}
+                  disabled={loading}
+                  variant="outline"
+                  size="sm"
+                  className="hidden md:flex"
+                >
+                  <FileSpreadsheet className="h-4 w-4 md:mr-2" />
+                  <span className="hidden md:inline">Export CSV</span>
+                </Button>
 
-              {/* Existing buttons */}
-              <Link to="/admin/notifications" className="relative" data-testid="admin-notifications-btn">
-                <Bell className="h-6 w-6 text-stone-500 cursor-pointer hover:text-stone-700" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
+                {/* Existing buttons */}
+                <Link to="/admin/notifications" className="relative" data-testid="admin-notifications-btn">
+                  <Bell className="h-6 w-6 text-stone-500 cursor-pointer hover:text-stone-700" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {unreadCount}
+                    </span>
+                  )}
+                </Link>
+              </div>
             </div>
           </div>
         </header>
@@ -458,7 +461,7 @@ export default function AdminDashboard() {
                 <CardHeader>
                   <CardTitle className="font-heading text-lg flex items-center gap-2">
                     <Download className="h-5 w-5" />
-                    Export Reports
+                    Export Summary of Requests
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
