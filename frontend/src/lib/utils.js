@@ -112,7 +112,11 @@ export async function exportAnalyticsToPDF(analytics, chartElements) {
           backgroundColor: '#ffffff',
           scale: 2,
           logging: false,
-          useCORS: true
+          useCORS: true,
+          allowTaint: true,
+          foreignObjectRendering: false,
+          imageTimeout: 0,
+          removeContainer: false
         });
 
         const imgData = canvas.toDataURL('image/png');

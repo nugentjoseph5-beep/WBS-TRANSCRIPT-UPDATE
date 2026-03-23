@@ -27,7 +27,16 @@ const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, per
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
   return (
-    <text x={x} y={y} fill="#333" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={12}>
+    <text 
+      x={x} 
+      y={y} 
+      fill="#333" 
+      textAnchor={x > cx ? 'start' : 'end'} 
+      dominantBaseline="central" 
+      fontSize={12}
+      fontWeight="500"
+      style={{ pointerEvents: 'none' }}
+    >
       {`${name}: ${value}`}
     </text>
   );
@@ -807,6 +816,7 @@ export default function AdminDashboard() {
                             dataKey="value"
                             label={renderCustomizedLabel}
                             labelLine={true}
+                            isAnimationActive={false}
                           >
                             {transcriptStatusData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
@@ -843,6 +853,7 @@ export default function AdminDashboard() {
                             dataKey="value"
                             label={renderCustomizedLabel}
                             labelLine={true}
+                            isAnimationActive={false}
                           >
                             {recommendationStatusData.map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
