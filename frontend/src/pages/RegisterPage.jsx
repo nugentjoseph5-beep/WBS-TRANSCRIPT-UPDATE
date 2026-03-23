@@ -50,7 +50,7 @@ export default function RegisterPage() {
             <blockquote className="text-2xl font-light italic">
               "Age Quod Agis: Whatever you do, do it to the best of your ability"
             </blockquote>
-            <p className="text-gold-400 font-medium">School Motto</p>
+            <p className="text-gold-400 font-medium">Wolmer's Motto</p>
           </div>
         </div>
       </div>
