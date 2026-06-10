@@ -3001,6 +3001,103 @@ async def import_all_data_json(file: UploadFile = File(...), current_user: dict 
         raise HTTPException(status_code=500, detail=f"Failed to import data: {str(e)}")
 
 
+# ==================== MICROSOFT APP CONFIGURATION ====================
+
+class PasswordVerifyRequest(BaseModel):
+    password: str
+
+class MsConfigRequest(BaseModel):
+    clientId: str
+    clientSecret: Optional[str] = None
+    redirectUri: str
+
+class MsConfigResponse(BaseModel):
+    clientId: str
+    clientSecret: str
+    redirectUri: str
+
+@api_router.post("/admin/verify-password")
+async def verify_admin_password(request: PasswordVerifyRequest, current_user: dict = Depends(get_current_user)):
+    """Verify admin password for sensitive operations"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Fetch admin from database
+    admin = await db.users.find_one({"id": current_user["id"]}, {"_id": 0})
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    
+    # Verify password
+    if not bcrypt.checkpw(request.password.encode('utf-8'), admin["password_hash"].encode('utf-8')):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    return {"success": True}
+
+@api_router.get("/admin/ms-config")
+async def get_ms_config(current_user: dict = Depends(get_current_user)):
+    """Get current Microsoft App configuration"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Read from environment variables
+    client_id = os.environ.get('MICROSOFT_CLIENT_ID', '')
+    # Don't expose the full secret, just indicate if it exists
+    client_secret = '••••••••' if os.environ.get('MICROSOFT_CLIENT_SECRET') else ''
+    redirect_uri = os.environ.get('MICROSOFT_REDIRECT_URI', '')
+    
+    return MsConfigResponse(
+        clientId=client_id,
+        clientSecret=client_secret,
+        redirectUri=redirect_uri
+    )
+
+@api_router.post("/admin/ms-config")
+async def update_ms_config(config: MsConfigRequest, current_user: dict = Depends(get_current_user)):
+    """Update Microsoft App configuration"""
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    try:
+        env_path = ROOT_DIR / '.env'
+        
+        # Read current .env file
+        env_vars = {}
+        if env_path.exists():
+            with open(env_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
+                        env_vars[key.strip()] = value.strip()
+        
+        # Update Microsoft config
+        env_vars['MICROSOFT_CLIENT_ID'] = config.clientId
+        if config.clientSecret and config.clientSecret != '••••••••':
+            env_vars['MICROSOFT_CLIENT_SECRET'] = config.clientSecret
+        env_vars['MICROSOFT_REDIRECT_URI'] = config.redirectUri
+        
+        # Write back to .env file
+        with open(env_path, 'w') as f:
+            for key, value in env_vars.items():
+                f.write(f"{key}={value}\n")
+        
+        # Update environment variables in current process
+        os.environ['MICROSOFT_CLIENT_ID'] = config.clientId
+        if config.clientSecret and config.clientSecret != '••••••••':
+            os.environ['MICROSOFT_CLIENT_SECRET'] = config.clientSecret
+        os.environ['MICROSOFT_REDIRECT_URI'] = config.redirectUri
+        
+        logger.info(f"Admin {current_user['email']} updated Microsoft App configuration")
+        
+        return {
+            "success": True,
+            "message": "Microsoft App configuration updated successfully"
+        }
+    except Exception as e:
+        logger.error(f"Failed to update MS config: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update configuration")
+
+
 # ==================== SEED DEFAULT ADMIN ====================
 
 @app.on_event("startup")

@@ -4,6 +4,9 @@ import { useAuth } from '@/lib/auth';
 import { analyticsAPI, requestAPI, recommendationAPI, notificationAPI, exportAPI, dataManagementAPI } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { formatDate, getStatusBadgeClass, exportAnalyticsToPDF, exportAnalyticsToCSV } from '@/lib/utils';
 import { toast } from 'sonner';
 import { 
@@ -13,7 +16,7 @@ import {
 import { 
   LayoutDashboard, FileText, Users, Bell, LogOut, Menu, X,
   Clock, CheckCircle, AlertCircle, XCircle, TrendingUp, AlertTriangle, UserCheck, Award,
-  Download, FileSpreadsheet, FileType, Trash2, Database, AlertOctagon, Upload
+  Download, FileSpreadsheet, FileType, Trash2, Database, AlertOctagon, Upload, Settings, Lock, Key
 } from 'lucide-react';
 
 const COLORS = ['#800000', '#FFD700', '#78716C', '#22c55e', '#3b82f6', '#ef4444'];
@@ -59,6 +62,18 @@ export default function AdminDashboard() {
   const [clearingData, setClearingData] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const importFileRef = useRef(null);
+
+  // Microsoft App Configuration states
+  const [showMsConfigDialog, setShowMsConfigDialog] = useState(false);
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [msConfig, setMsConfig] = useState({
+    clientId: '',
+    clientSecret: '',
+    redirectUri: ''
+  });
+  const [savingMsConfig, setSavingMsConfig] = useState(false);
+  const [verifyingPassword, setVerifyingPassword] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -248,6 +263,92 @@ export default function AdminDashboard() {
       toast.error(error.response?.data?.detail || 'Failed to clear data');
     } finally {
       setClearingData(false);
+    }
+  };
+
+  // Microsoft App Configuration handlers
+  const handleOpenMsConfig = () => {
+    setShowPasswordDialog(true);
+    setAdminPassword('');
+  };
+
+  const handleVerifyPassword = async () => {
+    if (!adminPassword.trim()) {
+      toast.error('Please enter your password');
+      return;
+    }
+
+    setVerifyingPassword(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/verify-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ password: adminPassword })
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid password');
+      }
+
+      // Fetch current MS config
+      const configResponse = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/ms-config`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
+        }
+      });
+
+      if (configResponse.ok) {
+        const configData = await configResponse.json();
+        setMsConfig({
+          clientId: configData.clientId || '',
+          clientSecret: configData.clientSecret || '',
+          redirectUri: configData.redirectUri || ''
+        });
+      }
+
+      setShowPasswordDialog(false);
+      setShowMsConfigDialog(true);
+      setAdminPassword('');
+      toast.success('Access granted');
+    } catch (error) {
+      toast.error('Invalid password');
+    } finally {
+      setVerifyingPassword(false);
+    }
+  };
+
+  const handleSaveMsConfig = async () => {
+    if (!msConfig.clientId || !msConfig.redirectUri) {
+      toast.error('Client ID and Redirect URI are required');
+      return;
+    }
+
+    setSavingMsConfig(true);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/ms-config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token') || sessionStorage.getItem('token')}`
+        },
+        body: JSON.stringify(msConfig)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update configuration');
+      }
+
+      const result = await response.json();
+      toast.success('Microsoft App configuration updated successfully. Please restart the application for changes to take effect.');
+      setShowMsConfigDialog(false);
+      setMsConfig({ clientId: '', clientSecret: '', redirectUri: '' });
+    } catch (error) {
+      toast.error('Failed to update Microsoft App configuration');
+    } finally {
+      setSavingMsConfig(false);
     }
   };
 
@@ -1068,6 +1169,25 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
+                  {/* Microsoft App Configuration */}
+                  <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
+                    <h3 className="font-semibold text-stone-900 flex items-center gap-2 mb-1">
+                      <Settings className="h-4 w-4 text-blue-600" />
+                      Microsoft App Registration
+                    </h3>
+                    <p className="text-sm text-stone-600 mb-3">
+                      Configure Microsoft 365 OAuth settings (Client ID, Client Secret, Redirect URI). This section is password-protected.
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={handleOpenMsConfig}
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      Configure Microsoft App
+                    </Button>
+                  </div>
+
                   {/* Danger Zone */}
                   <div className="bg-white rounded-lg p-4 border border-red-100">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -1224,6 +1344,135 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Password Verification Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5 text-blue-600" />
+              Password Required
+            </DialogTitle>
+            <DialogDescription>
+              Enter your admin password to access Microsoft App configuration.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="admin-password">Admin Password</Label>
+            <Input
+              id="admin-password"
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              placeholder="Enter your password"
+              className="mt-2"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleVerifyPassword();
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleVerifyPassword}
+              disabled={verifyingPassword || !adminPassword.trim()}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {verifyingPassword ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <Key className="h-4 w-4 mr-2" />
+                  Verify
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Microsoft App Configuration Dialog */}
+      <Dialog open={showMsConfigDialog} onOpenChange={setShowMsConfigDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-blue-600" />
+              Microsoft App Registration Configuration
+            </DialogTitle>
+            <DialogDescription>
+              Update your Microsoft 365 OAuth application settings. Find these values in your Azure AD App Registration.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <Label htmlFor="client-id">Application (Client) ID *</Label>
+              <Input
+                id="client-id"
+                value={msConfig.clientId}
+                onChange={(e) => setMsConfig({ ...msConfig, clientId: e.target.value })}
+                placeholder="e.g., 12345678-1234-1234-1234-123456789abc"
+                className="mt-2 font-mono text-sm"
+              />
+              <p className="text-xs text-stone-500 mt-1">Found in: Azure Portal → App Registrations → Overview → Application (client) ID</p>
+            </div>
+            <div>
+              <Label htmlFor="client-secret">Client Secret</Label>
+              <Input
+                id="client-secret"
+                type="password"
+                value={msConfig.clientSecret}
+                onChange={(e) => setMsConfig({ ...msConfig, clientSecret: e.target.value })}
+                placeholder="Enter new client secret (leave empty to keep current)"
+                className="mt-2 font-mono text-sm"
+              />
+              <p className="text-xs text-stone-500 mt-1">Found in: Azure Portal → App Registrations → Certificates & secrets → Client secrets</p>
+            </div>
+            <div>
+              <Label htmlFor="redirect-uri">Redirect URI *</Label>
+              <Input
+                id="redirect-uri"
+                value={msConfig.redirectUri}
+                onChange={(e) => setMsConfig({ ...msConfig, redirectUri: e.target.value })}
+                placeholder="e.g., https://yourdomain.com/auth/callback"
+                className="mt-2 font-mono text-sm"
+              />
+              <p className="text-xs text-stone-500 mt-1">Found in: Azure Portal → App Registrations → Authentication → Redirect URIs</p>
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-800">
+                <strong>Note:</strong> After saving, you may need to restart the application for changes to take effect. Make sure to update the Redirect URI in Azure AD to match.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMsConfigDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveMsConfig}
+              disabled={savingMsConfig || !msConfig.clientId || !msConfig.redirectUri}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {savingMsConfig ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Save Configuration
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
