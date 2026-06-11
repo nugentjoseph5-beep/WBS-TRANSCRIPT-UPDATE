@@ -1400,7 +1400,7 @@ export default function AdminDashboard() {
 
       {/* Microsoft App Configuration Dialog */}
       <Dialog open={showMsConfigDialog} onOpenChange={setShowMsConfigDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-blue-600" />
@@ -1410,7 +1410,8 @@ export default function AdminDashboard() {
               Update your Microsoft 365 OAuth application settings and email (SMTP) configuration for noreply@wolmers.org.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
+          <div className="overflow-y-auto flex-1 px-1">
+            <div className="py-4 space-y-4">
             <div>
               <Label htmlFor="client-id">Application (Client) ID *</Label>
               <Input
@@ -1481,8 +1482,9 @@ export default function AdminDashboard() {
                 <strong>Note:</strong> After saving, you may need to restart the application for changes to take effect. Make sure to update the Redirect URI in Azure AD to match.
               </p>
             </div>
+            </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button variant="outline" onClick={() => setShowMsConfigDialog(false)}>
               Cancel
             </Button>
