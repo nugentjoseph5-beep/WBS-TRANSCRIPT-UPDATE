@@ -34,6 +34,9 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, 
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -50,10 +53,17 @@ if not JWT_SECRET:
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 
-# Resend Configuration
+# Email Configuration (Microsoft SMTP)
+SMTP_SERVER = os.environ.get('SMTP_SERVER', 'smtp.office365.com')
+SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
+SMTP_USERNAME = os.environ.get('SMTP_USERNAME', '')  # noreply@wolmers.org
+SMTP_PASSWORD = os.environ.get('SMTP_PASSWORD', '')
+SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'noreply@wolmers.org')
+USE_SMTP = os.environ.get('USE_SMTP', 'true').lower() == 'true'
+
+# Legacy Resend Configuration (fallback)
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
-SENDER_EMAIL = os.environ.get('SENDER_EMAIL', 'onboarding@resend.dev')
-if RESEND_API_KEY:
+if RESEND_API_KEY and not USE_SMTP:
     resend.api_key = RESEND_API_KEY
 
 # Microsoft OAuth Configuration
@@ -400,22 +410,58 @@ async def require_role(roles: List[str]):
     return role_checker
 
 async def send_email_notification(to_email: str, subject: str, html_content: str):
-    if not RESEND_API_KEY:
-        logger.warning("Resend API key not configured, skipping email")
-        return None
-    try:
-        params = {
-            "from": SENDER_EMAIL,
-            "to": [to_email],
-            "subject": subject,
-            "html": html_content
-        }
-        result = await asyncio.to_thread(resend.Emails.send, params)
-        logger.info(f"Email sent to {to_email}")
-        return result
-    except Exception as e:
-        logger.error(f"Failed to send email: {str(e)}")
-        return None
+    """Send email via Microsoft SMTP or Resend"""
+    
+    if USE_SMTP:
+        # Use Microsoft SMTP
+        if not SMTP_USERNAME or not SMTP_PASSWORD:
+            logger.warning("SMTP credentials not configured, skipping email")
+            return None
+        
+        try:
+            # Create message
+            msg = MIMEMultipart('alternative')
+            msg['From'] = SENDER_EMAIL
+            msg['To'] = to_email
+            msg['Subject'] = subject
+            
+            # Attach HTML content
+            html_part = MIMEText(html_content, 'html')
+            msg.attach(html_part)
+            
+            # Send via SMTP in thread to avoid blocking
+            def send_smtp():
+                with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                    server.ehlo()
+                    server.starttls()
+                    server.ehlo()
+                    server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                    server.send_message(msg)
+                    logger.info(f"Email sent via SMTP to {to_email}")
+            
+            await asyncio.to_thread(send_smtp)
+            return {"success": True}
+        except Exception as e:
+            logger.error(f"Failed to send email via SMTP: {str(e)}")
+            return None
+    else:
+        # Use Resend (legacy fallback)
+        if not RESEND_API_KEY:
+            logger.warning("Resend API key not configured, skipping email")
+            return None
+        try:
+            params = {
+                "from": SENDER_EMAIL,
+                "to": [to_email],
+                "subject": subject,
+                "html": html_content
+            }
+            result = await asyncio.to_thread(resend.Emails.send, params)
+            logger.info(f"Email sent via Resend to {to_email}")
+            return result
+        except Exception as e:
+            logger.error(f"Failed to send email via Resend: {str(e)}")
+            return None
 
 async def create_notification(user_id: str, title: str, message: str, notif_type: str, request_id: str = None):
     notification = {
