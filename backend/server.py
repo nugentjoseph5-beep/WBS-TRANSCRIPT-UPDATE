@@ -3056,11 +3056,13 @@ class MsConfigRequest(BaseModel):
     clientId: str
     clientSecret: Optional[str] = None
     redirectUri: str
+    smtpPassword: Optional[str] = None
 
 class MsConfigResponse(BaseModel):
     clientId: str
     clientSecret: str
     redirectUri: str
+    smtpPassword: str
 
 @api_router.post("/admin/verify-password")
 async def verify_admin_password(request: PasswordVerifyRequest, current_user: dict = Depends(get_current_user)):
@@ -3090,11 +3092,13 @@ async def get_ms_config(current_user: dict = Depends(get_current_user)):
     # Don't expose the full secret, just indicate if it exists
     client_secret = '••••••••' if os.environ.get('MICROSOFT_CLIENT_SECRET') else ''
     redirect_uri = os.environ.get('MICROSOFT_REDIRECT_URI', '')
+    smtp_password = '••••••••' if os.environ.get('SMTP_PASSWORD') else ''
     
     return MsConfigResponse(
         clientId=client_id,
         clientSecret=client_secret,
-        redirectUri=redirect_uri
+        redirectUri=redirect_uri,
+        smtpPassword=smtp_password
     )
 
 @api_router.post("/admin/ms-config")
@@ -3122,6 +3126,10 @@ async def update_ms_config(config: MsConfigRequest, current_user: dict = Depends
             env_vars['MICROSOFT_CLIENT_SECRET'] = config.clientSecret
         env_vars['MICROSOFT_REDIRECT_URI'] = config.redirectUri
         
+        # Update SMTP password if provided
+        if config.smtpPassword and config.smtpPassword != '••••••••':
+            env_vars['SMTP_PASSWORD'] = config.smtpPassword
+        
         # Write back to .env file
         with open(env_path, 'w') as f:
             for key, value in env_vars.items():
@@ -3132,12 +3140,17 @@ async def update_ms_config(config: MsConfigRequest, current_user: dict = Depends
         if config.clientSecret and config.clientSecret != '••••••••':
             os.environ['MICROSOFT_CLIENT_SECRET'] = config.clientSecret
         os.environ['MICROSOFT_REDIRECT_URI'] = config.redirectUri
+        if config.smtpPassword and config.smtpPassword != '••••••••':
+            os.environ['SMTP_PASSWORD'] = config.smtpPassword
+            # Update global SMTP_PASSWORD variable
+            global SMTP_PASSWORD
+            SMTP_PASSWORD = config.smtpPassword
         
-        logger.info(f"Admin {current_user['email']} updated Microsoft App configuration")
+        logger.info(f"Admin {current_user['email']} updated Microsoft configuration")
         
         return {
             "success": True,
-            "message": "Microsoft App configuration updated successfully"
+            "message": "Microsoft configuration updated successfully. Email service will use new credentials immediately."
         }
     except Exception as e:
         logger.error(f"Failed to update MS config: {str(e)}")

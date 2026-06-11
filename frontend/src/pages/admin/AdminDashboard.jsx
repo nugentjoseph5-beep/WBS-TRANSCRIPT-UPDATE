@@ -70,7 +70,8 @@ export default function AdminDashboard() {
   const [msConfig, setMsConfig] = useState({
     clientId: '',
     clientSecret: '',
-    redirectUri: ''
+    redirectUri: '',
+    smtpPassword: ''
   });
   const [savingMsConfig, setSavingMsConfig] = useState(false);
   const [verifyingPassword, setVerifyingPassword] = useState(false);
@@ -305,7 +306,8 @@ export default function AdminDashboard() {
         setMsConfig({
           clientId: configData.clientId || '',
           clientSecret: configData.clientSecret || '',
-          redirectUri: configData.redirectUri || ''
+          redirectUri: configData.redirectUri || '',
+          smtpPassword: configData.smtpPassword || ''
         });
       }
 
@@ -1173,10 +1175,10 @@ export default function AdminDashboard() {
                   <div className="bg-white rounded-lg p-4 border border-blue-200 mb-4">
                     <h3 className="font-semibold text-stone-900 flex items-center gap-2 mb-1">
                       <Settings className="h-4 w-4 text-blue-600" />
-                      Microsoft App Registration
+                      Microsoft App Registration & Email
                     </h3>
                     <p className="text-sm text-stone-600 mb-3">
-                      Configure Microsoft 365 OAuth settings (Client ID, Client Secret, Redirect URI). This section is password-protected.
+                      Configure Microsoft 365 OAuth settings (Client ID, Client Secret, Redirect URI) and SMTP email password for noreply@wolmers.org. This section is password-protected.
                     </p>
                     <Button
                       variant="outline"
@@ -1184,7 +1186,7 @@ export default function AdminDashboard() {
                       className="border-blue-300 text-blue-700 hover:bg-blue-50"
                     >
                       <Lock className="h-4 w-4 mr-2" />
-                      Configure Microsoft App
+                      Configure Microsoft App & Email
                     </Button>
                   </div>
 
@@ -1402,10 +1404,10 @@ export default function AdminDashboard() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-blue-600" />
-              Microsoft App Registration Configuration
+              Microsoft Configuration
             </DialogTitle>
             <DialogDescription>
-              Update your Microsoft 365 OAuth application settings. Find these values in your Azure AD App Registration.
+              Update your Microsoft 365 OAuth application settings and email (SMTP) configuration for noreply@wolmers.org.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
@@ -1443,6 +1445,37 @@ export default function AdminDashboard() {
               />
               <p className="text-xs text-stone-500 mt-1">Found in: Azure Portal → App Registrations → Authentication → Redirect URIs</p>
             </div>
+            
+            {/* Divider */}
+            <div className="border-t border-stone-200 my-4"></div>
+            
+            {/* SMTP Configuration Section */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+              <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+                <Key className="h-4 w-4" />
+                Email Configuration (SMTP)
+              </h3>
+              <p className="text-xs text-blue-700">
+                Configure the password for <strong>noreply@wolmers.org</strong> to send email notifications via Microsoft SMTP.
+              </p>
+              <div>
+                <Label htmlFor="smtp-password">SMTP Password for noreply@wolmers.org</Label>
+                <Input
+                  id="smtp-password"
+                  type="password"
+                  value={msConfig.smtpPassword}
+                  onChange={(e) => setMsConfig({ ...msConfig, smtpPassword: e.target.value })}
+                  placeholder="Enter email account password or app password"
+                  className="mt-2 font-mono text-sm"
+                />
+                <p className="text-xs text-stone-500 mt-1">
+                  • If MFA is enabled: Generate App Password at <a href="https://account.microsoft.com/security" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">account.microsoft.com/security</a><br/>
+                  • Without MFA: Use regular account password<br/>
+                  • Leave empty to keep current password
+                </p>
+              </div>
+            </div>
+            
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
               <p className="text-sm text-yellow-800">
                 <strong>Note:</strong> After saving, you may need to restart the application for changes to take effect. Make sure to update the Redirect URI in Azure AD to match.
