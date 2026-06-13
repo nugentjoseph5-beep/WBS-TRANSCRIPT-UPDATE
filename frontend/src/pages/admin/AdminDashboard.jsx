@@ -1245,9 +1245,9 @@ export default function AdminDashboard() {
       {/* Clear Data Confirmation Modal */}
       {showClearModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="bg-red-600 p-4">
+            <div className="bg-red-600 p-4 flex-shrink-0">
               <div className="flex items-center gap-3">
                 <div className="bg-white/20 p-2 rounded-full">
                   <AlertTriangle className="h-6 w-6 text-white" />
@@ -1259,8 +1259,8 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Content */}
-            <div className="p-6">
+            {/* Content - Scrollable */}
+            <div className="p-6 overflow-y-auto flex-1">
               {/* Data Summary */}
               {dataSummary && (
                 <div className="bg-stone-50 rounded-lg p-4 mb-4">
@@ -1345,8 +1345,8 @@ export default function AdminDashboard() {
               </p>
             </div>
 
-            {/* Footer */}
-            <div className="bg-stone-50 px-6 py-4 flex justify-end gap-3">
+            {/* Footer - Fixed at bottom */}
+            <div className="bg-stone-50 px-6 py-4 flex justify-end gap-3 flex-shrink-0 border-t">
               <Button
                 variant="outline"
                 onClick={() => {
