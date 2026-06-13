@@ -3159,35 +3159,55 @@ async def update_ms_config(config: MsConfigRequest, current_user: dict = Depends
 
 # ==================== KEEP-ALIVE BACKGROUND TASK ====================
 
+import aiohttp
+
 keep_alive_active = False
 
 async def keep_alive_task():
     """
     Background task that runs continuously to keep the server active.
-    Prevents idle timeouts in preview/hosted environments.
-    Runs every 2 minutes.
+    Makes external HTTP requests to prevent container hibernation.
+    Runs every 3 minutes.
     """
     global keep_alive_active
     keep_alive_active = True
     
-    logger.info("🟢 [KeepAlive] Task started - Server will stay active")
+    # Get the server URL - use external URL if available
+    server_url = os.environ.get('BACKEND_EXTERNAL_URL') or os.environ.get('REACT_APP_BACKEND_URL') or 'http://localhost:8001'
+    health_endpoint = f"{server_url}/api/health"
+    
+    logger.info(f"🟢 [KeepAlive] Task started - Will ping {health_endpoint} every 3 minutes")
+    
+    # Wait 30 seconds before first ping to let server fully start
+    await asyncio.sleep(30)
     
     while keep_alive_active:
         try:
-            # Wait 2 minutes between pings
-            await asyncio.sleep(120)
-            
-            # Lightweight activity to keep server alive
             current_time = datetime.now(timezone.utc)
             
-            # Quick database query to keep connection active
+            # Make HTTP request to self (generates external traffic)
+            async with aiohttp.ClientSession() as session:
+                try:
+                    async with session.get(health_endpoint, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                        if response.status == 200:
+                            data = await response.json()
+                            logger.info(
+                                f"💓 [KeepAlive] External ping successful at {current_time.strftime('%Y-%m-%d %H:%M:%S UTC')} | "
+                                f"Status: {data.get('status', 'unknown')}"
+                            )
+                        else:
+                            logger.warning(f"⚠️  [KeepAlive] Ping returned status {response.status}")
+                except Exception as e:
+                    logger.error(f"⚠️  [KeepAlive] Failed to ping health endpoint: {str(e)}")
+            
+            # Also do lightweight DB query to keep connection alive
             user_count = await db.users.count_documents({})
             request_count = await db.transcript_requests.count_documents({})
             
-            logger.info(
-                f"💓 [KeepAlive] Server active at {current_time.strftime('%Y-%m-%d %H:%M:%S UTC')} | "
-                f"Users: {user_count} | Requests: {request_count}"
-            )
+            logger.info(f"📊 [KeepAlive] DB Stats | Users: {user_count} | Requests: {request_count}")
+            
+            # Wait 3 minutes between pings
+            await asyncio.sleep(180)
             
         except asyncio.CancelledError:
             logger.info("🔴 [KeepAlive] Task cancelled - shutting down")
