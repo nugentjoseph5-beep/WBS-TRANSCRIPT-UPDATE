@@ -1274,21 +1274,33 @@ export default function AdminDashboard() {
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
                 <div className="flex items-start gap-3">
                   <Download className="h-5 w-5 text-amber-600 mt-0.5" />
-                  <div>
-                    <p className="text-sm text-amber-800 font-medium">Export data before clearing?</p>
+                  <div className="flex-1">
+                    <p className="text-sm text-amber-800 font-medium">📦 Backup Before Clearing</p>
                     <p className="text-xs text-amber-700 mt-1">
-                      Download a PDF backup of all current data before proceeding.
+                      Export a complete JSON backup of all data before deleting. This backup can be re-imported later.
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleExportAllData}
-                      disabled={exportLoading}
-                      className="mt-2 border-amber-300 text-amber-700 hover:bg-amber-100"
-                    >
-                      <Download className="h-3 w-3 mr-1" />
-                      {exportLoading ? 'Exporting...' : 'Export to PDF'}
-                    </Button>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportData}
+                        disabled={exportLoading}
+                        className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                      >
+                        <Database className="h-3 w-3 mr-1" />
+                        {exportLoading ? 'Exporting...' : 'Export JSON Backup'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleExportAllData}
+                        disabled={exportLoading}
+                        className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        {exportLoading ? 'Exporting...' : 'Export PDF Report'}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
