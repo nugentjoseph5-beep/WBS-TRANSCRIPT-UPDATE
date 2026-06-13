@@ -3157,6 +3157,68 @@ async def update_ms_config(config: MsConfigRequest, current_user: dict = Depends
         raise HTTPException(status_code=500, detail="Failed to update configuration")
 
 
+# ==================== KEEP-ALIVE BACKGROUND TASK ====================
+
+keep_alive_active = False
+
+async def keep_alive_task():
+    """
+    Background task that runs continuously to keep the server active.
+    Prevents idle timeouts in preview/hosted environments.
+    Runs every 2 minutes.
+    """
+    global keep_alive_active
+    keep_alive_active = True
+    
+    logger.info("🟢 [KeepAlive] Task started - Server will stay active")
+    
+    while keep_alive_active:
+        try:
+            # Wait 2 minutes between pings
+            await asyncio.sleep(120)
+            
+            # Lightweight activity to keep server alive
+            current_time = datetime.now(timezone.utc)
+            
+            # Quick database query to keep connection active
+            user_count = await db.users.count_documents({})
+            request_count = await db.transcript_requests.count_documents({})
+            
+            logger.info(
+                f"💓 [KeepAlive] Server active at {current_time.strftime('%Y-%m-%d %H:%M:%S UTC')} | "
+                f"Users: {user_count} | Requests: {request_count}"
+            )
+            
+        except asyncio.CancelledError:
+            logger.info("🔴 [KeepAlive] Task cancelled - shutting down")
+            break
+        except Exception as e:
+            logger.error(f"⚠️  [KeepAlive] Error: {str(e)}")
+            # Continue running even if there's an error
+            await asyncio.sleep(60)
+
+@api_router.get("/health")
+async def health_check():
+    """
+    Health check endpoint for monitoring services.
+    Returns server status and basic metrics.
+    """
+    try:
+        # Check database connection
+        await db.command('ping')
+        db_status = "connected"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "database": db_status,
+        "keep_alive": "active" if keep_alive_active else "inactive",
+        "uptime": "running"
+    }
+
+
 # ==================== SEED DEFAULT ADMIN ====================
 
 @app.on_event("startup")
@@ -3180,6 +3242,20 @@ async def seed_default_admin():
         
         await db.users.insert_one(admin_doc)
         logger.info("Default admin account created: admin@wolmers.org / Admin123!")
+
+@app.on_event("startup")
+async def start_background_tasks():
+    """Start all background tasks on application startup"""
+    # Start keep-alive task
+    asyncio.create_task(keep_alive_task())
+    logger.info("🚀 Background tasks started")
+
+@app.on_event("shutdown")
+async def shutdown_background_tasks():
+    """Cleanup background tasks on shutdown"""
+    global keep_alive_active
+    keep_alive_active = False
+    logger.info("🛑 Background tasks stopped")
 
 # ============================================================
 # SINGLE RECORD EXPORT ENDPOINTS
