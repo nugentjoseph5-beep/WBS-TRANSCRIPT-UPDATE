@@ -1303,7 +1303,7 @@ export default function AdminDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={handleExportData}
+                        onClick={handleExportAllDataJSON}
                         disabled={exportLoading}
                         className="border-amber-300 text-amber-700 hover:bg-amber-100"
                       >
