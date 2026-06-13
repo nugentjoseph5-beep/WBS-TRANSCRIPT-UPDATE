@@ -88,12 +88,22 @@ export default function AdminDashboard() {
         recommendationAPI.getAllRequests(),
         notificationAPI.getUnreadCount(),
       ]);
-      setAnalytics(analyticsRes.data);
-      setRecentRequests(requestsRes.data.slice(0, 5));
-      setRecentRecommendations(recommendationsRes.data.slice(0, 5));
-      setUnreadCount(unreadRes.data.count);
+      
+      // Set analytics with fallback to prevent crashes
+      setAnalytics(analyticsRes.data || {});
+      
+      // Safely handle empty arrays
+      setRecentRequests(Array.isArray(requestsRes.data) ? requestsRes.data.slice(0, 5) : []);
+      setRecentRecommendations(Array.isArray(recommendationsRes.data) ? recommendationsRes.data.slice(0, 5) : []);
+      setUnreadCount(unreadRes.data?.count || 0);
     } catch (error) {
+      console.error('Dashboard data fetch error:', error);
       toast.error('Failed to load dashboard data');
+      // Set defaults to prevent crashes
+      setAnalytics({});
+      setRecentRequests([]);
+      setRecentRecommendations([]);
+      setUnreadCount(0);
     } finally {
       setLoading(false);
     }
@@ -258,9 +268,19 @@ export default function AdminDashboard() {
       toast.success(response.data.message);
       setShowClearModal(false);
       setConfirmText('');
-      // Refresh dashboard data
-      fetchData();
+      
+      // Reset state to prevent crashes
+      setAnalytics({});
+      setRecentRequests([]);
+      setRecentRecommendations([]);
+      setUnreadCount(0);
+      
+      // Refresh dashboard data after a short delay
+      setTimeout(() => {
+        fetchData();
+      }, 500);
     } catch (error) {
+      console.error('Clear data error:', error);
       toast.error(error.response?.data?.detail || 'Failed to clear data');
     } finally {
       setClearingData(false);
@@ -371,17 +391,17 @@ export default function AdminDashboard() {
   ];
 
   // Transcript status data
-  const transcriptStatusData = analytics ? [
-    { name: 'Pending', value: analytics.pending_requests, color: '#eab308' },
-    { name: 'In Progress', value: analytics.in_progress_requests, color: '#3b82f6' },
-    { name: 'Processing', value: analytics.processing_requests, color: '#8b5cf6' },
-    { name: 'Ready', value: analytics.ready_requests, color: '#06b6d4' },
-    { name: 'Completed', value: analytics.completed_requests, color: '#22c55e' },
-    { name: 'Rejected', value: analytics.rejected_requests, color: '#ef4444' },
+  const transcriptStatusData = analytics && typeof analytics === 'object' ? [
+    { name: 'Pending', value: analytics.pending_requests || 0, color: '#eab308' },
+    { name: 'In Progress', value: analytics.in_progress_requests || 0, color: '#3b82f6' },
+    { name: 'Processing', value: analytics.processing_requests || 0, color: '#8b5cf6' },
+    { name: 'Ready', value: analytics.ready_requests || 0, color: '#06b6d4' },
+    { name: 'Completed', value: analytics.completed_requests || 0, color: '#22c55e' },
+    { name: 'Rejected', value: analytics.rejected_requests || 0, color: '#ef4444' },
   ].filter(item => item.value > 0) : [];
 
   // Recommendation status data
-  const recommendationStatusData = analytics ? [
+  const recommendationStatusData = analytics && typeof analytics === 'object' ? [
     { name: 'Pending', value: analytics.pending_recommendation_requests || 0, color: '#eab308' },
     { name: 'In Progress', value: analytics.in_progress_recommendation_requests || 0, color: '#3b82f6' },
     { name: 'Processing', value: analytics.processing_recommendation_requests || 0, color: '#8b5cf6' },
